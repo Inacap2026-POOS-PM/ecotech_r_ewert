@@ -42,6 +42,7 @@ python main.py --demo
 - Reasignar el departamento de un empleado.
 - Asignar un empleado a varios proyectos y varios empleados a un proyecto.
 - Registrar horas y consultar los totales y el pago bruto del empleado.
+- Sincronizar empleados desde Supabase, con respaldo local si el servicio falla.
 
 El menú pide un departamento al crear un empleado. El modelo y la base siguen
 permitiendo empleados sin departamento para leer los datos de la versión de clase.
@@ -56,8 +57,11 @@ La primera ejecución pide crear un administrador con contraseña de al menos
 crear usuarios desde la opción 10. El rol `consulta` solo puede consultar empleados;
 el rol `admin` puede gestionar datos y crear cuentas.
 
-Las contraseñas no se guardan como texto. Se guarda un hash PBKDF2 con una sal
-aleatoria por usuario. Dirección, teléfono y correo se cifran con Fernet antes de
+Las contraseñas no se guardan como texto ni con cifrado reversible. Se guarda un
+hash bcrypt (12 rondas) con una sal aleatoria por usuario; la sal queda incluida en
+el hash. Las cuentas creadas con PBKDF2 en la E2 se migran a bcrypt la próxima vez
+que inician sesión. bcrypt admite hasta 72 bytes, por lo que se rechazan contraseñas
+más largas. Dirección, teléfono y correo se cifran con Fernet antes de
 escribirlos en SQLite y se recuperan al reconstruir el objeto. La clave está en
 `.env`, separada de las filas de la base. Los datos de contacto de versiones
 anteriores se cifran al inicializar el esquema.
@@ -81,10 +85,77 @@ liquidación mensual ni incluyen impuestos o descuentos legales.
 
 Los datos se validan antes de asignarlos. Los montos deben ser finitos y positivos
 (el bono puede ser cero). Las fechas usan `date`. El RUT se conserva como texto,
-con validación de formato, pero todavía sin comprobar el dígito verificador.
+se acepta con o sin puntos y se comprueba su dígito verificador (módulo 11).
+Si una base antigua tiene un RUT inválido, el listado omite esa fila y deja el
+motivo en `ecotech.log`.
 Correo, dirección y teléfono son opcionales; si se informan, se valida su formato.
 Cada jornada admite hasta 24 horas y la suma diaria del empleado también tiene
 ese límite, aunque trabaje en proyectos diferentes.
+
+## Servicio externo: Supabase (UA3)
+
+La opción 11 del menú, o `python main.py --sincronizar`, trae los empleados de una
+tabla de Supabase, los valida y los guarda en SQLite. Ambas requieren iniciar
+sesión como `admin`.
+
+### Configurar Supabase una vez
+
+1. En Supabase, abre **SQL Editor** y ejecuta `db/02_supabase_empleados.sql`.
+   Crea la tabla `empleados`, activa RLS con lectura solo para usuarios
+   autenticados e inserta datos de ejemplo, entre ellos dos filas inválidas a propósito.
+2. En **Authentication > Users**, crea un usuario con correo y contraseña.
+3. En **Project Settings > API**, copia la URL y la clave pública (`anon` o
+   `publishable`). No uses la clave `service_role`.
+4. Completa en `.env` las variables `SUPABASE_URL`, `SUPABASE_KEY`,
+   `SUPABASE_EMAIL` y `SUPABASE_PASSWORD`. `.env.example` las lista sin valores reales.
+
+Si falta alguna variable, el programa dice cuáles faltan y el resto del menú sigue
+funcionando. La URL debe comenzar con `https://`.
+
+### Cómo se consume
+
+| Módulo | Responsabilidad |
+| --- | --- |
+| `servicios/cliente_supabase.py` | Inicia sesión, envía `Authorization: Bearer`, renueva el token y aplica reintentos. |
+| `servicios/deserializador_empleados.py` | Convierte el JSON en `EmpleadoPlanta` o `EmpleadoContratista` validados. |
+| `servicios/sincronizador.py` | Guarda lo recibido o activa el plan B o C. |
+| `EmpleadoRepositorio.sincronizar` | Inserta o actualiza con `ON CONFLICT` parametrizado y registra `obtenido_en`. |
+
+Cada petición tiene `timeout=(3, 10)`: 3 s para conectar y 10 s para leer.
+
+| Qué pasa | Respuesta |
+| --- | --- |
+| Timeout o sin red | Se reintenta. |
+| 401 | Se renueva el token una sola vez y se repite la petición. Si vuelve a fallar, se informa. |
+| 403, 404 y otros 4xx | No se reintenta; se informa la causa. |
+| 429 | Se espera lo que indique `Retry-After`. Si pide más de 60 s, se pasa al plan B. |
+| 500 a 503 | Se reintenta con espera creciente. |
+| Certificado TLS inválido | Se informa y no se reintenta. Nunca se usa `verify=False`. |
+
+Los reintentos tienen un tope de 4 intentos, con esperas de 1, 2 y 4 s más un
+poco de azar. Cada intento se muestra en consola y queda en `ecotech.log`, sin
+tokens ni contraseñas.
+
+Cada fila del JSON se trata como un dato hostil. Se revisan tipos, largos, fecha
+AAAA-MM-DD no futura, RUT con dígito verificador y formato del correo. Una fila
+inválida se rechaza con su motivo y no detiene las demás. La sincronización no
+cambia el departamento ni las jornadas registradas localmente.
+
+**Degradación controlada:** si Supabase no responde, se muestran los empleados
+guardados en SQLite con la fecha y la antigüedad de su `obtenido_en` (plan B).
+Si tampoco hay datos locales, se informa que el servicio no está disponible (plan C).
+En ningún caso se muestra una traza de error.
+
+### Auditoría de código asistido por IA
+
+```powershell
+python auditoria.py
+```
+
+Revisa las cinco señales: SQL armado con f-strings, `verify=False`,
+`except Exception: pass`, peticiones sin timeout y librerías que no existen en
+PyPI. Con `--sin-red` omite la consulta a PyPI. Los resultados y las decisiones
+sobre las sugerencias de la IA están en `docs/bitacora_ia.md`.
 
 ## Decisiones del laboratorio C08
 
@@ -112,6 +183,15 @@ python -m unittest discover -s pruebas -v
 Las pruebas usan archivos temporales. Comprueban CRUD, contratos, validaciones,
 relaciones, inyección SQL, cascada, rollback, actualización de una base antigua,
 inicio de sesión, permisos por rol y cifrado de contactos.
+
+Las pruebas de la UA3 no usan la red: simulan las respuestas de Supabase para
+cubrir timeout, falta de red, 401 con renovación, 403, 404, 429 con `Retry-After`,
+5xx con espera creciente, JSON corrupto, datos hostiles, el upsert con `obtenido_en`
+y los planes B y C. También comprueban bcrypt, la migración desde PBKDF2 y que
+`auditoria.py` detecte las cinco señales en código vulnerable de ejemplo.
+
+Para probar a mano que falla de forma controlada, desconecta la red o cambia
+`SUPABASE_URL` por una dirección inexistente y usa la opción 11.
 
 ## Diferencias y pendientes del UML de la evaluación 1
 
