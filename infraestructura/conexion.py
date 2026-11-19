@@ -3,10 +3,7 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-RUTA_RAIZ = Path(__file__).resolve().parent.parent
-load_dotenv(RUTA_RAIZ / ".env")
+from infraestructura.configuracion import RUTA_RAIZ
 
 
 class ErrorDeConexion(Exception):

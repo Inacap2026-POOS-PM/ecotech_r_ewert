@@ -5,3 +5,4 @@ __pycache__/
 ecotech.db
 .vscode/
 *.db
+*.log
