@@ -24,6 +24,7 @@ from infraestructura.registro_tiempo_repositorio import RegistroTiempoRepositori
 from infraestructura.usuario_repositorio import UsuarioRepositorio
 from seguridad.gestor_autenticacion import GestorAutenticacion
 from servicios.excepciones import ErrorServicioExterno
+from servicios.servicio_clima import ServicioClima
 from servicios.sincronizador import API, LOCAL, SincronizadorEmpleados, describir_antiguedad
 
 ERRORES_ESPERADOS = (ValueError, ErrorDeConexion, ErrorDeConfiguracion, ErrorServicioExterno)
@@ -245,6 +246,24 @@ def sincronizar_empleados():
         mostrar_empleado(empleado)
 
 
+def consultar_clima():
+    """Pide una ciudad, la valida y muestra su clima actual o el último guardado."""
+    ciudad = input("Ciudad de Chile: ")
+    print("Consultando Open-Meteo...")
+    resultado = ServicioClima().consultar(ciudad)
+    if resultado.origen == API:
+        print("Clima actual: " + resultado.registro.resumen())
+    elif resultado.origen == LOCAL:
+        fecha = resultado.obtenido_en.astimezone().strftime("%d-%m-%Y %H:%M")
+        print(f"No se pudo consultar Open-Meteo: {resultado.motivo}")
+        print(f"Último clima guardado, obtenido el {fecha} "
+              f"({describir_antiguedad(resultado.obtenido_en)}):")
+        print(resultado.registro.resumen())
+    else:
+        print(f"No se pudo consultar Open-Meteo: {resultado.motivo}")
+        print("Tampoco hay un clima guardado para esa ciudad. Intenta más tarde.")
+
+
 def iniciar_acceso():
     """Prepara el primer administrador y permite tres intentos de acceso."""
     gestor = GestorAutenticacion(UsuarioRepositorio())
@@ -282,14 +301,15 @@ def menu(gestor):
         print("\nEcoTech\n1 Crear empleado\n2 Consultar empleados\n3 Actualizar empleado"
               "\n4 Eliminar empleado\n5 Departamentos\n6 Proyectos\n7 Asignar proyecto"
               "\n8 Registrar horas\n9 Cambiar departamento\n10 Crear usuario"
-              "\n11 Sincronizar empleados desde Supabase\n0 Salir")
+              "\n11 Sincronizar empleados desde Supabase\n12 Consultar el clima (Open-Meteo)"
+              "\n0 Salir")
         opcion = input("Opción: ").strip()
         if opcion == "0":
             return
-        if opcion not in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"):
+        if opcion not in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"):
             print("Elige una opción de la lista.")
             continue
-        modulo = "consulta" if opcion == "2" else "administrar"
+        modulo = "consulta" if opcion in ("2", "12") else "administrar"
         if not gestor.verificar_rol(gestor.usuario_actual, modulo):
             print("Tu usuario no tiene permiso para esa opción.")
             continue
@@ -316,6 +336,8 @@ def menu(gestor):
                 crear_usuario(gestor)
             elif opcion == "11":
                 sincronizar_empleados()
+            elif opcion == "12":
+                consultar_clima()
             else:
                 print("Elige una opción de la lista.")
         except ERRORES_ESPERADOS as error:

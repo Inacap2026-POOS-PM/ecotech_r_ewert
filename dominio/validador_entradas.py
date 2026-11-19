@@ -63,6 +63,16 @@ class ValidadorEntradas:
         return str(resto)
 
     @staticmethod
+    def ciudad(valor):
+        """Sanea el nombre de ciudad que se enviará a la API, antes de cualquier petición."""
+        valor = ValidadorEntradas.texto(valor, "La ciudad")
+        valor = re.sub(r" {2,}", " ", valor)
+        if not re.fullmatch(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]{1,59}", valor):
+            raise ValueError("La ciudad solo admite letras, espacios, punto, guion y apóstrofo "
+                             "(entre 2 y 60 caracteres).")
+        return valor
+
+    @staticmethod
     def rut(valor):
         """Acepta el RUT con o sin puntos y comprueba su dígito verificador."""
         valor = ValidadorEntradas.texto(valor, "RUT").upper().replace(".", "")

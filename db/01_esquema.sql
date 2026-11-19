@@ -62,6 +62,21 @@ CREATE TABLE IF NOT EXISTS empleado_proyecto (
     FOREIGN KEY (proyecto_id) REFERENCES proyecto(id) ON DELETE CASCADE
 );
 
+-- Último clima consultado por ciudad; obtenido_en permite el plan B sin red.
+CREATE TABLE IF NOT EXISTS clima (
+    consulta      TEXT PRIMARY KEY,
+    ciudad        TEXT NOT NULL,
+    region        TEXT NOT NULL DEFAULT '',
+    latitud       REAL NOT NULL CHECK (latitud BETWEEN -90 AND 90),
+    longitud      REAL NOT NULL CHECK (longitud BETWEEN -180 AND 180),
+    temperatura   REAL NOT NULL,
+    humedad       REAL NOT NULL CHECK (humedad BETWEEN 0 AND 100),
+    viento        REAL NOT NULL CHECK (viento >= 0),
+    codigo_clima  INTEGER NOT NULL,
+    medido_en     TEXT NOT NULL,
+    obtenido_en   TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS usuario (
     nombre TEXT PRIMARY KEY,
     sal TEXT NOT NULL,
