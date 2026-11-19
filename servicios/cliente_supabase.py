@@ -8,7 +8,7 @@ from servicios.cliente_http import ClienteHTTP
 from servicios.excepciones import (ErrorAutenticacion, ErrorPermiso, RespuestaInvalida,
                                    TokenRechazado)
 
-RUTA_TOKEN = "/auth/v1/token"
+RUTA_AUTENTICACION = "/auth/v1/token"
 
 
 class ClienteSupabase(ClienteHTTP):
@@ -67,7 +67,8 @@ class ClienteSupabase(ClienteHTTP):
 
     def iniciar_sesion(self):
         """Obtiene un access_token con el usuario de Supabase Auth."""
-        datos = self._solicitar("POST", self._url + RUTA_TOKEN, params={"grant_type": "password"},
+        datos = self._solicitar("POST", self._url + RUTA_AUTENTICACION,
+                                params={"grant_type": "password"},
                                 cuerpo={"email": self._email, "password": self._password},
                                 encabezados=self._encabezados(con_token=False))
         self._guardar_tokens(datos)
@@ -76,7 +77,7 @@ class ClienteSupabase(ClienteHTTP):
         """Usa el refresh_token; si también caducó, vuelve a iniciar sesión."""
         if self._refresh_token:
             try:
-                datos = self._solicitar("POST", self._url + RUTA_TOKEN,
+                datos = self._solicitar("POST", self._url + RUTA_AUTENTICACION,
                                         params={"grant_type": "refresh_token"},
                                         cuerpo={"refresh_token": self._refresh_token},
                                         encabezados=self._encabezados(con_token=False))
@@ -104,7 +105,7 @@ class ClienteSupabase(ClienteHTTP):
 
     def _error_del_cliente(self, codigo, ruta):
         """Mensajes propios de Supabase para el inicio de sesión y la política RLS."""
-        if ruta == RUTA_TOKEN and codigo in (400, 401):
+        if ruta == RUTA_AUTENTICACION and codigo in (400, 401):
             return ErrorAutenticacion("Supabase rechazó el usuario o la contraseña. Revisa "
                                       "SUPABASE_EMAIL y SUPABASE_PASSWORD en .env.")
         if codigo == 403:

@@ -46,6 +46,12 @@ Se ejecuta con `python auditoria.py` (o `python auditoria.py --sin-red`).
 Además se revisó el historial con `git log --all -p`: `.env` nunca se subió y
 no aparecen claves reales en ningún commit.
 
+También se ejecutó **Bandit**, una de las herramientas que indica la guía
+(`bandit -r . -x ./.venv,./pruebas`). Marcó un solo aviso de severidad baja: la constante
+`RUTA_TOKEN = "/auth/v1/token"` parecía una contraseña escrita en el código. Era un falso
+positivo, porque el valor es una ruta de la API, pero se renombró a `RUTA_AUTENTICACION` para
+que el nombre describa lo que guarda. Resultado final: *No issues identified*.
+
 ## Pruebas de falla realizadas
 
 - Sin credenciales en `.env`: se informan las variables faltantes y el programa sigue funcionando.
