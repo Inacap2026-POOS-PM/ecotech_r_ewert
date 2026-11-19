@@ -31,7 +31,7 @@ class PruebasPersistencia(unittest.TestCase):
         self.addCleanup(self.entorno.stop)
         inicializar_bd()
         self.repo = EmpleadoRepositorio()
-        self.ana = EmpleadoPlanta("12345678-9", "Ana", date(2024, 3, 1), 950000)
+        self.ana = EmpleadoPlanta("12345678-5", "Ana", date(2024, 3, 1), 950000)
 
     def test_crud_empleado(self):
         self.repo.guardar(self.ana)
@@ -133,6 +133,16 @@ class PruebasPersistencia(unittest.TestCase):
                 with self.assertRaises(ErrorDeConexion):
                     with obtener_conexion():
                         self.fail("No debe abrir una conexión inválida")
+
+    def test_fila_antigua_con_rut_invalido_se_omite_al_listar(self):
+        self.repo.guardar(self.ana)
+        with obtener_conexion() as conn:
+            conn.execute("INSERT INTO persona VALUES (?, ?)", ("12345678-9", "Antiguo"))
+            conn.execute("INSERT INTO empleado(rut, fecha_ingreso, sueldo_base) VALUES (?, ?, ?)",
+                         ("12345678-9", "2024-01-01", 900000))
+        with self.assertLogs("infraestructura.empleado_repositorio", "WARNING"):
+            empleados = self.repo.listar()
+        self.assertEqual([empleado.rut for empleado in empleados], ["12345678-5"])
 
     def test_esquema_se_puede_ejecutar_dos_veces(self):
         inicializar_bd()

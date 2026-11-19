@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from datetime import date
 
@@ -9,6 +10,8 @@ from dominio.proyecto import Proyecto
 from dominio.registro_tiempo import RegistroTiempo
 from infraestructura.conexion import obtener_conexion
 from seguridad.cifrado import cifrar, descifrar
+
+log = logging.getLogger(__name__)
 
 CONSULTA = """SELECT p.rut, p.nombre, e.fecha_ingreso, e.sueldo_base,
               e.direccion, e.telefono, e.email, e.tipo_contrato, e.bono, e.tarifa,
@@ -122,12 +125,20 @@ class EmpleadoRepositorio:
         sql += " ORDER BY p.rut"
         with obtener_conexion() as conn:
             filas = conn.execute(sql, parametros).fetchall()
-            empleados = []
-            for fila in filas:
+            return self._reconstruir(conn, filas)
+
+    def _reconstruir(self, conn, filas):
+        """Omite filas guardadas que ya no cumplen las reglas, sin ocultar el motivo."""
+        empleados = []
+        for fila in filas:
+            try:
                 empleado = self._fila_a_empleado(fila)
-                self._cargar_relaciones(conn, empleado)
-                empleados.append(empleado)
-            return empleados
+            except ValueError as error:
+                log.warning("Se omitió el empleado %s guardado: %s", fila[0], error)
+                continue
+            self._cargar_relaciones(conn, empleado)
+            empleados.append(empleado)
+        return empleados
 
     def actualizar(self, empleado):
         """Actualiza los datos del contrato y el nombre en una sola transacción."""

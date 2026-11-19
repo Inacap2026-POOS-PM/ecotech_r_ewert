@@ -10,19 +10,20 @@ from dominio.empleado_contratista import EmpleadoContratista
 from dominio.informe import Informe
 from dominio.proyecto import Proyecto
 from dominio.registro_tiempo import RegistroTiempo
+from dominio.validador_entradas import ValidadorEntradas as Validar
 
 
 class PruebasDominio(unittest.TestCase):
     """Verifica validaciones, relaciones y polimorfismo."""
 
     def setUp(self):
-        self.ana = EmpleadoPlanta("12345678-9", "Ana", date(2024, 1, 1), 900000,
+        self.ana = EmpleadoPlanta("12345678-5", "Ana", date(2024, 1, 1), 900000,
                                   bono_sostenibilidad=100000)
         self.proyecto = Proyecto(None, "Solar", date(2026, 1, 1))
 
     def test_empleado_es_abstracto(self):
         with self.assertRaises(TypeError):
-            Empleado("12345678-9", "Ana", date(2024, 1, 1), 900000)
+            Empleado("12345678-5", "Ana", date(2024, 1, 1), 900000)
 
     def test_datos_invalidos_no_reemplazan_valores_anteriores(self):
         for valor in (-1, 0, True, float("nan"), float("inf"), "1000"):
@@ -93,3 +94,14 @@ class PruebasDominio(unittest.TestCase):
             informe.generar()
         informe.proyecto = self.proyecto
         self.assertIn("Horas registradas: 0", informe.generar())
+
+    def test_rut_valida_digito_verificador(self):
+        self.assertEqual(Validar.rut("12.345.678-5"), "12345678-5")
+        self.assertEqual(Validar.rut("7654321-6"), "7654321-6")
+        self.assertEqual(Validar.rut("10000013-k"), "10000013-K")
+        for invalido in ("12345678-9", "ECO-12345", "1234-5", "'; DROP TABLE empleado;--",
+                         "", "12345678"):
+            with self.assertRaises(ValueError):
+                Validar.rut(invalido)
+        with self.assertRaises(ValueError):
+            Validar.rut(12345678)

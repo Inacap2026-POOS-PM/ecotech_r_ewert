@@ -48,9 +48,27 @@ class ValidadorEntradas:
         return isinstance(telefono, str) and bool(re.fullmatch(r"\+?[0-9]{8,15}", telefono))
 
     @staticmethod
+    def digito_verificador(cuerpo):
+        """Calcula el dígito del RUT con el algoritmo módulo 11."""
+        suma = 0
+        factor = 2
+        for digito in reversed(cuerpo):
+            suma += int(digito) * factor
+            factor = 2 if factor == 7 else factor + 1
+        resto = 11 - suma % 11
+        if resto == 11:
+            return "0"
+        if resto == 10:
+            return "K"
+        return str(resto)
+
+    @staticmethod
     def rut(valor):
-        """Comprueba el formato; no valida el dígito verificador en esta etapa."""
-        valor = ValidadorEntradas.texto(valor, "RUT").upper()
+        """Acepta el RUT con o sin puntos y comprueba su dígito verificador."""
+        valor = ValidadorEntradas.texto(valor, "RUT").upper().replace(".", "")
         if not re.fullmatch(r"[0-9]{7,8}-[0-9K]", valor):
-            raise ValueError("El RUT debe tener un formato como 12345678-9.")
+            raise ValueError("El RUT debe tener un formato como 12345678-5.")
+        cuerpo, digito = valor.split("-")
+        if ValidadorEntradas.digito_verificador(cuerpo) != digito:
+            raise ValueError("El dígito verificador del RUT no es válido.")
         return valor

@@ -82,7 +82,7 @@ class PruebasSeguridad(unittest.TestCase):
         self.assertFalse(self.gestor.iniciar_sesion("' OR '1'='1", "clave de prueba 123"))
 
     def test_contactos_se_guardan_cifrados_y_se_recuperan(self):
-        empleado = EmpleadoPlanta("12345678-9", "Ana", date(2024, 1, 1), 900000,
+        empleado = EmpleadoPlanta("12345678-5", "Ana", date(2024, 1, 1), 900000,
             direccion="Calle de prueba 123", telefono="+56912345678", email="ana@ejemplo.cl")
         repo = EmpleadoRepositorio()
         repo.guardar(empleado)
@@ -111,13 +111,13 @@ class PruebasSeguridad(unittest.TestCase):
 
     def test_migracion_cifra_contactos_antiguos_sin_perderlos(self):
         with obtener_conexion() as conn:
-            conn.execute("INSERT INTO persona VALUES (?, ?)", ("12345678-9", "Ana"))
+            conn.execute("INSERT INTO persona VALUES (?, ?)", ("12345678-5", "Ana"))
             conn.execute("""INSERT INTO empleado(rut, fecha_ingreso, sueldo_base, email)
-                         VALUES (?, ?, ?, ?)""", ("12345678-9", "2024-01-01", 900000,
+                         VALUES (?, ?, ?, ?)""", ("12345678-5", "2024-01-01", 900000,
                                                   "ana@ejemplo.cl"))
         inicializar_bd()
         inicializar_bd()
-        self.assertEqual(EmpleadoRepositorio().obtener("12345678-9").email, "ana@ejemplo.cl")
+        self.assertEqual(EmpleadoRepositorio().obtener("12345678-5").email, "ana@ejemplo.cl")
         with obtener_conexion() as conn:
             self.assertTrue(conn.execute("SELECT email FROM empleado").fetchone()[0].startswith(
                 "fernet:"))

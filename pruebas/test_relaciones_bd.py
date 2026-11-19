@@ -56,7 +56,7 @@ class PruebasRelacionesBD(unittest.TestCase):
         self.assertEqual(leido.email, "luis@ejemplo.cl")
         self.assertEqual(leido.departamento.id, self.depto.id)
         self.assertEqual(leido.departamento.gerente, "Ana")
-        planta = EmpleadoPlanta("12345678-9", "Ana", date(2024, 1, 1), 900000, 100000)
+        planta = EmpleadoPlanta("12345678-5", "Ana", date(2024, 1, 1), 900000, 100000)
         self.repo.guardar(planta)
         self.assertEqual(self.repo.obtener(planta.rut).calcular_pago(), 1000000)
 
@@ -144,15 +144,15 @@ class PruebasRelacionesBD(unittest.TestCase):
                     fecha_inicio TEXT NOT NULL);
                 CREATE TABLE registro_tiempo(id INTEGER PRIMARY KEY, empleado_rut TEXT,
                     proyecto_id INTEGER, horas REAL, fecha TEXT);
-                INSERT INTO persona VALUES ('12345678-9', 'Ana');
-                INSERT INTO empleado VALUES ('12345678-9', '2024-01-01', 900000, NULL);
+                INSERT INTO persona VALUES ('12345678-5', 'Ana');
+                INSERT INTO empleado VALUES ('12345678-5', '2024-01-01', 900000, NULL);
                 INSERT INTO proyecto VALUES (1, 'Solar', '2026-01-01');
-                INSERT INTO registro_tiempo VALUES (1, '12345678-9', 1, 3, '2026-01-02');
+                INSERT INTO registro_tiempo VALUES (1, '12345678-5', 1, 3, '2026-01-02');
             """)
         with patch.dict(os.environ, {"DB_NOMBRE": str(antigua)}):
             inicializar_bd()
             inicializar_bd()
-            leido = self.repo.obtener("12345678-9")
+            leido = self.repo.obtener("12345678-5")
             self.assertIsInstance(leido, EmpleadoPlanta)
             self.assertEqual(leido.total_horas(), 3)
             self.assertEqual(leido.nombre, "Ana")

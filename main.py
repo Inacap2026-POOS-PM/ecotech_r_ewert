@@ -282,7 +282,7 @@ def _demostrar():
     proyectos = ProyectoRepositorio()
     departamento = departamentos.guardar(Departamento("Tecnología", gerente="Ana"))
     proyecto = proyectos.guardar(Proyecto(None, "SolarEco", date(2026, 1, 1), "Energía solar"))
-    ana = EmpleadoPlanta("12345678-9", "Ana", date(2024, 1, 1), 950000, 50000)
+    ana = EmpleadoPlanta("12345678-5", "Ana", date(2024, 1, 1), 950000, 50000)
     luis = EmpleadoContratista("11111111-1", "Luis", date(2024, 1, 1), 950000, 10000)
     for empleado in (ana, luis):
         departamento.asignar_empleado(empleado)
