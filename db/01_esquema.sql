@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS empleado (
     bono             REAL NOT NULL DEFAULT 0 CHECK (bono >= 0),
     tarifa           REAL NOT NULL DEFAULT 0 CHECK (tarifa >= 0),
     departamento_id  INTEGER,
+    obtenido_en      TEXT,
     FOREIGN KEY (rut) REFERENCES persona(rut) ON DELETE CASCADE,
     FOREIGN KEY (departamento_id) REFERENCES departamento(id)
 );

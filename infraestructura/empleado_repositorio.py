@@ -1,6 +1,6 @@
 import logging
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 
 from dominio.departamento import Departamento
 from dominio.empleado_planta import EmpleadoPlanta
@@ -159,6 +159,43 @@ class EmpleadoRepositorio:
                 return cur.rowcount
         except sqlite3.IntegrityError as error:
             raise RelacionInvalida("El departamento no existe o los datos son inválidos.") from error
+
+    def sincronizar(self, empleado, obtenido_en):
+        """Inserta o actualiza un empleado externo y registra cuándo se obtuvo."""
+        datos = self._parametros(empleado)[:8]
+        try:
+            with obtener_conexion() as conn:
+                anterior = conn.execute("SELECT MIN(fecha) FROM registro_tiempo "
+                    "WHERE empleado_rut = ?", (empleado.rut,)).fetchone()[0]
+                if anterior and empleado.fecha_ingreso.isoformat() > anterior:
+                    raise RelacionInvalida("El ingreso informado es posterior a sus jornadas.")
+                conn.execute("""INSERT INTO persona (rut, nombre) VALUES (?, ?)
+                    ON CONFLICT(rut) DO UPDATE SET nombre = excluded.nombre""",
+                    (empleado.rut, empleado.nombre))
+                conn.execute("""INSERT INTO empleado
+                    (rut, fecha_ingreso, sueldo_base, direccion, telefono, email,
+                     tipo_contrato, bono, tarifa, obtenido_en)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(rut) DO UPDATE SET
+                    fecha_ingreso = excluded.fecha_ingreso, sueldo_base = excluded.sueldo_base,
+                    direccion = excluded.direccion, telefono = excluded.telefono,
+                    email = excluded.email, tipo_contrato = excluded.tipo_contrato,
+                    bono = excluded.bono, tarifa = excluded.tarifa,
+                    obtenido_en = excluded.obtenido_en""",
+                    (empleado.rut,) + datos + (obtenido_en.isoformat(timespec="seconds"),))
+        except sqlite3.IntegrityError as error:
+            raise RelacionInvalida("No se pudo guardar el empleado sincronizado.") from error
+        return empleado
+
+    def listar_sincronizados(self):
+        """Plan B: devuelve los empleados externos guardados y la fecha más antigua."""
+        with obtener_conexion() as conn:
+            filas = conn.execute(CONSULTA + " WHERE e.obtenido_en IS NOT NULL "
+                                 "ORDER BY p.rut").fetchall()
+            empleados = self._reconstruir(conn, filas)
+            fecha = conn.execute("SELECT MIN(obtenido_en) FROM empleado "
+                                 "WHERE obtenido_en IS NOT NULL").fetchone()[0]
+        return empleados, datetime.fromisoformat(fecha) if fecha else None
 
     def asignar_proyecto(self, empleado, proyecto):
         """Persiste la relación N:M y luego actualiza ambos objetos."""

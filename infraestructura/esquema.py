@@ -23,6 +23,7 @@ CAMBIOS = [
          "ALTER TABLE empleado ADD COLUMN tipo_contrato TEXT NOT NULL DEFAULT 'planta'"),
         ("bono", "ALTER TABLE empleado ADD COLUMN bono REAL NOT NULL DEFAULT 0"),
         ("tarifa", "ALTER TABLE empleado ADD COLUMN tarifa REAL NOT NULL DEFAULT 0"),
+        ("obtenido_en", "ALTER TABLE empleado ADD COLUMN obtenido_en TEXT"),
     ]),
 ]
 
