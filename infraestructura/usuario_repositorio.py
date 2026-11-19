@@ -26,3 +26,9 @@ class UsuarioRepositorio:
                              "VALUES (?, ?, ?, ?)", (nombre, sal, hash_clave, rol))
         except sqlite3.IntegrityError as error:
             raise ValueError("El usuario ya existe o su rol es inválido.") from error
+
+    def actualizar_hash(self, nombre, sal, hash_clave):
+        """Reemplaza un hash antiguo por uno nuevo después de un acceso correcto."""
+        with obtener_conexion() as conn:
+            conn.execute("UPDATE usuario SET sal = ?, hash_clave = ? WHERE nombre = ?",
+                         (sal, hash_clave, nombre))

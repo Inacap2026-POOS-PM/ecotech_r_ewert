@@ -1,3 +1,4 @@
+import hashlib
 import io
 import os
 import tempfile
@@ -146,3 +147,28 @@ class PruebasSeguridad(unittest.TestCase):
                 with patch("main.getpass", return_value="incorrecta"):
                     with self.assertRaises(ValueError):
                         iniciar_acceso()
+
+    def test_password_se_guarda_con_bcrypt_y_no_en_texto_plano(self):
+        self.registrar_admin()
+        with obtener_conexion() as conn:
+            filas = conn.execute("SELECT nombre, sal, hash_clave FROM usuario").fetchall()
+        for nombre, sal, hash_clave in filas:
+            self.assertTrue(hash_clave.startswith("$2b$12$"))
+            self.assertTrue(hash_clave.startswith(sal))
+            self.assertNotIn("clave de prueba 123", sal + hash_clave)
+
+    def test_cuenta_pbkdf2_antigua_se_migra_a_bcrypt_al_iniciar_sesion(self):
+        sal = bytes(range(16))
+        antiguo = hashlib.pbkdf2_hmac("sha256", b"clave antigua 123", sal, 600000).hex()
+        self.repo.guardar("antiguo", sal.hex(), antiguo, "admin")
+        self.assertFalse(self.gestor.iniciar_sesion("antiguo", "incorrecta"))
+        self.assertEqual(self.repo.obtener("antiguo")[2], antiguo)
+        self.assertTrue(self.gestor.iniciar_sesion("antiguo", "clave antigua 123"))
+        self.assertTrue(self.repo.obtener("antiguo")[2].startswith("$2b$"))
+        self.assertTrue(self.gestor.iniciar_sesion("antiguo", "clave antigua 123"))
+
+    def test_password_de_mas_de_72_bytes_se_rechaza_sin_error(self):
+        with self.assertRaises(ValueError):
+            self.gestor.registrar_usuario("admin", "x" * 73, "admin")
+        self.registrar_admin()
+        self.assertFalse(self.gestor.iniciar_sesion("rodolfo", "x" * 73))
