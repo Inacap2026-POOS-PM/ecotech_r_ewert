@@ -43,7 +43,7 @@ python main.py --demo
 - Asignar un empleado a varios proyectos y varios empleados a un proyecto.
 - Registrar horas y consultar los totales y el pago bruto del empleado.
 - Sincronizar empleados desde Supabase, con respaldo local si el servicio falla.
-- Consultar el clima actual de una ciudad de Chile con Open-Meteo, con respaldo local.
+- Consultar el tipo de cambio del dólar y convertir un monto a pesos, con respaldo local.
 
 El menú pide un departamento al crear un empleado. El modelo y la base siguen
 permitiendo empleados sin departamento para leer los datos de la versión de clase.
@@ -148,26 +148,27 @@ guardados en SQLite con la fecha y la antigüedad de su `obtenido_en` (plan B).
 Si tampoco hay datos locales, se informa que el servicio no está disponible (plan C).
 En ningún caso se muestra una traza de error.
 
-## Servicio externo: clima con Open-Meteo (UA3)
+## Servicio externo: tipo de cambio del dólar (UA3)
 
 La guía de la evaluación pide consumir una API de clima o de tipo de cambio. La opción 12
-del menú consulta el clima actual de una ciudad de Chile en [Open-Meteo](https://open-meteo.com),
-una API pública que responde JSON y no necesita clave. Solo la pueden usar usuarios que
-iniciaron sesión, con rol `admin` o `consulta`.
+del menú consulta cuántos pesos chilenos vale un dólar en
+[ExchangeRate-API](https://www.exchangerate-api.com/docs/free) (`open.er-api.com`), una API
+pública que responde JSON y no necesita clave, y convierte el monto que escribe el usuario.
+Solo la pueden usar usuarios que iniciaron sesión, con rol `admin` o `consulta`.
 
-1. `ValidadorEntradas.ciudad` sanea el nombre escrito **antes** de cualquier petición:
-   solo letras, espacios, punto, guion y apóstrofo, entre 2 y 60 caracteres. Una entrada como
-   `Temuco; DROP TABLE clima;--` se rechaza y no llega a la API.
-2. `ClienteClima` (hereda de `ClienteHTTP`) busca la ciudad en la API de geocodificación y
-   luego pide su clima actual. La ciudad viaja en `params`; `requests` la codifica y no se
-   concatena a la URL. Usa el mismo timeout, reintentos y trato por código que Supabase.
-3. `DeserializadorClima` revisa el JSON con `.get()` y crea un `RegistroClima`, que valida
-   rangos: humedad de 0 a 100, viento no negativo, código WMO conocido y coordenadas reales.
-4. `ClimaRepositorio` guarda la última lectura de cada ciudad con un upsert parametrizado y
-   `obtenido_en`.
-5. Si Open-Meteo no responde, se muestra el último clima guardado de esa ciudad con su
-   antigüedad (plan B) o un aviso si nunca se consultó (plan C). Una ciudad que no existe se
-   informa como tal y no activa el plan B.
+1. `ValidadorEntradas.monto` revisa el monto escrito **antes** de cualquier petición: número
+   positivo con hasta 2 decimales (punto o coma). Una entrada como
+   `100; DROP TABLE tipo_cambio;--` se rechaza y no llega a la API.
+2. `ClienteTipoCambio` (hereda de `ClienteHTTP`) pide `GET /v6/latest/USD`. La moneda va en
+   la ruta, por eso `ValidadorEntradas.codigo_moneda` exige tres letras y bloquea textos como
+   `../admin`. Usa el mismo timeout, reintentos y trato por código que Supabase.
+3. `DeserializadorTipoCambio` revisa el JSON con `.get()` y crea un `TipoCambio`, que valida
+   que el valor sea un número positivo y finito. La API responde **200** con
+   `"result": "error"` cuando algo falla, así que no basta con mirar el código HTTP.
+4. `TipoCambioRepositorio` guarda el último valor de cada par de monedas con un upsert
+   parametrizado y `obtenido_en`.
+5. Si la API no responde o entrega datos inválidos, se convierte con el último valor guardado
+   y se indica su antigüedad (plan B); si nunca se consultó, se avisa con claridad (plan C).
 
 ### Auditoría de código asistido por IA
 
@@ -212,12 +213,12 @@ cubrir timeout, falta de red, 401 con renovación, 403, 404, 429 con `Retry-Afte
 5xx con espera creciente, JSON corrupto, datos hostiles, el upsert con `obtenido_en`
 y los planes B y C. También comprueban bcrypt, la migración desde PBKDF2 y que
 `auditoria.py` detecte las cinco señales en código vulnerable de ejemplo.
-`pruebas/test_clima.py` cubre la validación de la ciudad (las entradas hostiles no llegan a
-la API), reintentos y tope del cliente de clima, datos hostiles de Open-Meteo y los planes
-B y C. En total son 87 pruebas.
+`pruebas/test_tipo_cambio.py` cubre la validación del monto y de la moneda (las entradas
+hostiles no llegan a la API), reintentos, 429 y tope del cliente, el error que llega con
+código 200, datos hostiles y los planes B y C. En total son 91 pruebas.
 
 Para probar a mano que falla de forma controlada, desconecta la red y usa la opción 12
-(clima) o la 11 (Supabase). También puedes cambiar `SUPABASE_URL` por una dirección
+(dólar) o la 11 (Supabase). También puedes cambiar `SUPABASE_URL` por una dirección
 inexistente.
 
 ## Diferencias y pendientes del UML de la evaluación 1
