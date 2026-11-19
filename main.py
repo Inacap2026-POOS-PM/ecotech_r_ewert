@@ -24,7 +24,7 @@ from infraestructura.registro_tiempo_repositorio import RegistroTiempoRepositori
 from infraestructura.usuario_repositorio import UsuarioRepositorio
 from seguridad.gestor_autenticacion import GestorAutenticacion
 from servicios.excepciones import ErrorServicioExterno
-from servicios.servicio_clima import ServicioClima
+from servicios.servicio_tipo_cambio import ServicioTipoCambio
 from servicios.sincronizador import API, LOCAL, SincronizadorEmpleados, describir_antiguedad
 
 ERRORES_ESPERADOS = (ValueError, ErrorDeConexion, ErrorDeConfiguracion, ErrorServicioExterno)
@@ -246,22 +246,24 @@ def sincronizar_empleados():
         mostrar_empleado(empleado)
 
 
-def consultar_clima():
-    """Pide una ciudad, la valida y muestra su clima actual o el último guardado."""
-    ciudad = input("Ciudad de Chile: ")
-    print("Consultando Open-Meteo...")
-    resultado = ServicioClima().consultar(ciudad)
+def consultar_dolar():
+    """Pide un monto en dólares, lo valida y lo convierte a pesos con el tipo de cambio."""
+    monto = input("Monto en dólares (Enter = 1): ").strip() or "1"
+    print("Consultando el tipo de cambio del dólar...")
+    resultado = ServicioTipoCambio().consultar(monto)
     if resultado.origen == API:
-        print("Clima actual: " + resultado.registro.resumen())
+        print("Tipo de cambio actual: " + resultado.tipo_cambio.resumen())
     elif resultado.origen == LOCAL:
         fecha = resultado.obtenido_en.astimezone().strftime("%d-%m-%Y %H:%M")
-        print(f"No se pudo consultar Open-Meteo: {resultado.motivo}")
-        print(f"Último clima guardado, obtenido el {fecha} "
+        print(f"No se pudo consultar el tipo de cambio: {resultado.motivo}")
+        print(f"Se usa el último valor guardado, obtenido el {fecha} "
               f"({describir_antiguedad(resultado.obtenido_en)}):")
-        print(resultado.registro.resumen())
+        print(resultado.tipo_cambio.resumen())
     else:
-        print(f"No se pudo consultar Open-Meteo: {resultado.motivo}")
-        print("Tampoco hay un clima guardado para esa ciudad. Intenta más tarde.")
+        print(f"No se pudo consultar el tipo de cambio: {resultado.motivo}")
+        print("Tampoco hay un tipo de cambio guardado. Intenta más tarde.")
+        return
+    print(f"US$ {resultado.monto:,.2f} = $ {resultado.total():,.0f} pesos chilenos")
 
 
 def iniciar_acceso():
@@ -301,7 +303,7 @@ def menu(gestor):
         print("\nEcoTech\n1 Crear empleado\n2 Consultar empleados\n3 Actualizar empleado"
               "\n4 Eliminar empleado\n5 Departamentos\n6 Proyectos\n7 Asignar proyecto"
               "\n8 Registrar horas\n9 Cambiar departamento\n10 Crear usuario"
-              "\n11 Sincronizar empleados desde Supabase\n12 Consultar el clima (Open-Meteo)"
+              "\n11 Sincronizar empleados desde Supabase\n12 Consultar el dólar (tipo de cambio)"
               "\n0 Salir")
         opcion = input("Opción: ").strip()
         if opcion == "0":
@@ -337,7 +339,7 @@ def menu(gestor):
             elif opcion == "11":
                 sincronizar_empleados()
             elif opcion == "12":
-                consultar_clima()
+                consultar_dolar()
             else:
                 print("Elige una opción de la lista.")
         except ERRORES_ESPERADOS as error:

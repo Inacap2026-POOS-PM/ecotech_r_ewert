@@ -62,19 +62,14 @@ CREATE TABLE IF NOT EXISTS empleado_proyecto (
     FOREIGN KEY (proyecto_id) REFERENCES proyecto(id) ON DELETE CASCADE
 );
 
--- Último clima consultado por ciudad; obtenido_en permite el plan B sin red.
-CREATE TABLE IF NOT EXISTS clima (
-    consulta      TEXT PRIMARY KEY,
-    ciudad        TEXT NOT NULL,
-    region        TEXT NOT NULL DEFAULT '',
-    latitud       REAL NOT NULL CHECK (latitud BETWEEN -90 AND 90),
-    longitud      REAL NOT NULL CHECK (longitud BETWEEN -180 AND 180),
-    temperatura   REAL NOT NULL,
-    humedad       REAL NOT NULL CHECK (humedad BETWEEN 0 AND 100),
-    viento        REAL NOT NULL CHECK (viento >= 0),
-    codigo_clima  INTEGER NOT NULL,
-    medido_en     TEXT NOT NULL,
-    obtenido_en   TEXT NOT NULL
+-- Último tipo de cambio de cada par de monedas; obtenido_en permite el plan B sin red.
+CREATE TABLE IF NOT EXISTS tipo_cambio (
+    moneda_base     TEXT NOT NULL CHECK (length(moneda_base) = 3),
+    moneda_destino  TEXT NOT NULL CHECK (length(moneda_destino) = 3),
+    valor           REAL NOT NULL CHECK (valor > 0),
+    actualizado_en  TEXT NOT NULL,
+    obtenido_en     TEXT NOT NULL,
+    PRIMARY KEY (moneda_base, moneda_destino)
 );
 
 CREATE TABLE IF NOT EXISTS usuario (

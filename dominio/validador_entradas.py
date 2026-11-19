@@ -63,14 +63,24 @@ class ValidadorEntradas:
         return str(resto)
 
     @staticmethod
-    def ciudad(valor):
-        """Sanea el nombre de ciudad que se enviará a la API, antes de cualquier petición."""
-        valor = ValidadorEntradas.texto(valor, "La ciudad")
-        valor = re.sub(r" {2,}", " ", valor)
-        if not re.fullmatch(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]{1,59}", valor):
-            raise ValueError("La ciudad solo admite letras, espacios, punto, guion y apóstrofo "
-                             "(entre 2 y 60 caracteres).")
+    def codigo_moneda(valor):
+        """Código ISO 4217 de tres letras; va en la ruta de la API, así que se valida antes."""
+        valor = ValidadorEntradas.texto(valor, "La moneda").upper()
+        if not re.fullmatch(r"[A-Z]{3}", valor):
+            raise ValueError("La moneda debe ser un código de tres letras, como USD o CLP.")
         return valor
+
+    @staticmethod
+    def monto(valor, maximo=1_000_000_000):
+        """Convierte el monto escrito por el usuario; acepta punto o coma como decimal."""
+        valor = ValidadorEntradas.texto(valor, "El monto")
+        if not re.fullmatch(r"[0-9]{1,10}([.,][0-9]{1,2})?", valor):
+            raise ValueError("El monto debe ser un número positivo con hasta 2 decimales, "
+                             "por ejemplo 150 o 99,90.")
+        numero = float(valor.replace(",", "."))
+        if numero <= 0 or numero > maximo:
+            raise ValueError(f"El monto debe ser mayor que 0 y menor o igual a {maximo:,}.")
+        return numero
 
     @staticmethod
     def rut(valor):
