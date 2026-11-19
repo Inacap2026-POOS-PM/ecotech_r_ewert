@@ -1,5 +1,6 @@
 """Menú y demostración por consola de EcoTech."""
 
+import logging
 import sys
 import os
 import tempfile
@@ -13,6 +14,7 @@ from dominio.empleado_contratista import EmpleadoContratista
 from dominio.informe import Informe
 from dominio.proyecto import Proyecto
 from dominio.registro_tiempo import RegistroTiempo
+from infraestructura.configuracion import RUTA_RAIZ, ErrorDeConfiguracion
 from infraestructura.conexion import ErrorDeConexion
 from infraestructura.departamento_repositorio import DepartamentoRepositorio
 from infraestructura.empleado_repositorio import EmpleadoRepositorio
@@ -21,6 +23,28 @@ from infraestructura.proyecto_repositorio import ProyectoRepositorio
 from infraestructura.registro_tiempo_repositorio import RegistroTiempoRepositorio
 from infraestructura.usuario_repositorio import UsuarioRepositorio
 from seguridad.gestor_autenticacion import GestorAutenticacion
+from servicios.excepciones import ErrorServicioExterno
+from servicios.sincronizador import API, LOCAL, SincronizadorEmpleados, describir_antiguedad
+
+ERRORES_ESPERADOS = (ValueError, ErrorDeConexion, ErrorDeConfiguracion, ErrorServicioExterno)
+
+
+def configurar_registro():
+    """Guarda todo el detalle en ecotech.log y muestra en consola los reintentos.
+
+    Los errores no se repiten en consola porque el menú ya los explica al usuario.
+    """
+    raiz = logging.getLogger()
+    if raiz.handlers:
+        return
+    raiz.setLevel(logging.INFO)
+    archivo = logging.FileHandler(RUTA_RAIZ / "ecotech.log", encoding="utf-8")
+    archivo.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    consola = logging.StreamHandler(sys.stdout)
+    consola.addFilter(lambda evento: evento.levelno == logging.WARNING)
+    consola.setFormatter(logging.Formatter("[Aviso] %(message)s"))
+    raiz.addHandler(archivo)
+    raiz.addHandler(consola)
 
 
 def mostrar_empleado(empleado):
@@ -200,6 +224,27 @@ def cambiar_departamento():
     print("Departamento actualizado.")
 
 
+def sincronizar_empleados():
+    """Trae los empleados de Supabase o, si falla, muestra los guardados localmente."""
+    print("Consultando Supabase...")
+    resultado = SincronizadorEmpleados().sincronizar()
+    if resultado.origen == API:
+        print(f"Datos actualizados desde Supabase: {len(resultado.empleados)} guardados, "
+              f"{len(resultado.rechazados)} rechazados.")
+        for rechazo in resultado.rechazados:
+            print(f"  Rechazado {rechazo.rut or '(sin RUT)'}: {rechazo.motivo}")
+    elif resultado.origen == LOCAL:
+        fecha = resultado.obtenido_en.astimezone().strftime("%d-%m-%Y %H:%M")
+        print(f"No se pudo consultar Supabase: {resultado.motivo}")
+        print(f"Se muestran los datos locales obtenidos el {fecha} "
+              f"({describir_antiguedad(resultado.obtenido_en)}).")
+    else:
+        print(f"No se pudo consultar Supabase: {resultado.motivo}")
+        print("Tampoco hay empleados sincronizados en la base local. Intenta más tarde.")
+    for empleado in resultado.empleados:
+        mostrar_empleado(empleado)
+
+
 def iniciar_acceso():
     """Prepara el primer administrador y permite tres intentos de acceso."""
     gestor = GestorAutenticacion(UsuarioRepositorio())
@@ -211,7 +256,7 @@ def iniciar_acceso():
             raise ValueError("Las contraseñas no coinciden.")
         gestor.registrar_usuario(nombre, clave, "admin")
         print("Administrador creado.")
-    for intento in range(3):
+    for _ in range(3):
         usuario = input("Usuario: ")
         clave = getpass("Contraseña: ")
         if gestor.iniciar_sesion(usuario, clave):
@@ -236,11 +281,12 @@ def menu(gestor):
     while True:
         print("\nEcoTech\n1 Crear empleado\n2 Consultar empleados\n3 Actualizar empleado"
               "\n4 Eliminar empleado\n5 Departamentos\n6 Proyectos\n7 Asignar proyecto"
-              "\n8 Registrar horas\n9 Cambiar departamento\n10 Crear usuario\n0 Salir")
+              "\n8 Registrar horas\n9 Cambiar departamento\n10 Crear usuario"
+              "\n11 Sincronizar empleados desde Supabase\n0 Salir")
         opcion = input("Opción: ").strip()
         if opcion == "0":
             return
-        if opcion not in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"):
+        if opcion not in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"):
             print("Elige una opción de la lista.")
             continue
         modulo = "consulta" if opcion == "2" else "administrar"
@@ -268,9 +314,11 @@ def menu(gestor):
                 cambiar_departamento()
             elif opcion == "10":
                 crear_usuario(gestor)
+            elif opcion == "11":
+                sincronizar_empleados()
             else:
                 print("Elige una opción de la lista.")
-        except (ValueError, ErrorDeConexion) as error:
+        except ERRORES_ESPERADOS as error:
             print(f"No se pudo completar la operación: {error}")
 
 
@@ -330,18 +378,26 @@ def ejecutar_laboratorio():
 
 
 def main():
-    """Inicia el menú o una demostración independiente."""
+    """Inicia el menú, la sincronización o una demostración independiente."""
+    configurar_registro()
     try:
         if len(sys.argv) == 2 and sys.argv[1] == "--demo":
             ejecutar_laboratorio()
+        elif len(sys.argv) == 2 and sys.argv[1] == "--sincronizar":
+            inicializar_bd()
+            gestor = iniciar_acceso()
+            if not gestor.verificar_rol(gestor.usuario_actual, "administrar"):
+                print("Solo un administrador puede sincronizar empleados.")
+                return 1
+            sincronizar_empleados()
         elif len(sys.argv) == 1:
             inicializar_bd()
             gestor = iniciar_acceso()
             menu(gestor)
         else:
-            print("Usa python main.py o python main.py --demo.")
+            print("Usa python main.py, python main.py --sincronizar o python main.py --demo.")
             return 1
-    except (ValueError, ErrorDeConexion) as error:
+    except ERRORES_ESPERADOS as error:
         print(f"No se pudo iniciar EcoTech: {error}")
         return 1
     except (EOFError, KeyboardInterrupt):

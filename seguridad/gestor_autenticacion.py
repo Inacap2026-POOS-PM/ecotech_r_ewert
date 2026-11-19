@@ -6,7 +6,7 @@ import bcrypt
 
 from seguridad.cifrado import cifrar
 
-registro = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 RONDAS_BCRYPT = 12
 MAXIMO_BYTES_BCRYPT = 72
@@ -88,7 +88,7 @@ class GestorAutenticacion:
                 return False
             nueva_sal, nuevo_hash = hashear_password(contrasenia)
             self.repositorio.actualizar_hash(nombre, nueva_sal, nuevo_hash)
-            registro.info("La cuenta %s se migró de PBKDF2 a bcrypt.", nombre)
+            log.info("La cuenta %s se migró de PBKDF2 a bcrypt.", nombre)
         self.usuario_actual = nombre
         return True
 

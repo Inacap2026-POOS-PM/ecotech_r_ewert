@@ -42,3 +42,22 @@ class PruebasConsola(unittest.TestCase):
                 self.assertEqual(ruta.read_bytes(), b"datos que la demo no debe modificar")
                 self.assertIn("Horas registradas: 6", salida.getvalue())
                 self.assertIn("prueba superada", salida.getvalue())
+
+    def test_sincronizar_sin_credenciales_falla_de_forma_controlada(self):
+        with tempfile.TemporaryDirectory() as carpeta:
+            entorno = {"DB_NOMBRE": str(Path(carpeta) / "menu.db"), "DB_MOTOR": "sqlite",
+                       "SUPABASE_URL": "", "SUPABASE_KEY": "", "SUPABASE_EMAIL": "",
+                       "SUPABASE_PASSWORD": ""}
+            with patch.dict(os.environ, entorno):
+                inicializar_bd()
+                gestor = Mock()
+                gestor.verificar_rol.return_value = True
+                salida = io.StringIO()
+                with redirect_stdout(salida):
+                    with self.assertLogs("servicios.sincronizador", "ERROR"):
+                        with patch("builtins.input", side_effect=["11", "0"]):
+                            menu(gestor)
+                texto = salida.getvalue()
+                self.assertIn("Faltan variables en .env: SUPABASE_URL", texto)
+                self.assertIn("Tampoco hay empleados sincronizados", texto)
+                self.assertNotIn("Traceback", texto)
