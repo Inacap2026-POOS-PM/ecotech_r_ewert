@@ -2,7 +2,7 @@
 
 Registro del uso de IA en la Unidad 3: servicios externos y seguridad.
 Herramienta: Claude Code (modelo Claude Opus 5.5) en VS Code, sobre la rama `rodolfo/ua3`.
-Fecha de la sesión: 18-11-2026.
+Fechas de las sesiones: 18-11-2026 (entradas 1 a 13) y 19-11-2026 (entradas 14 a 16).
 
 Cada entrada indica la petición, lo que propuso la IA y la decisión final
 (**Acepto**, **Modifico** o **Descarto**) con su justificación técnica. Las
@@ -27,6 +27,9 @@ Las pruebas citadas se ejecutan con `python -m unittest discover -s pruebas`.
 | 11 | Degradación controlada. | Plan B con los datos locales y su antigüedad; plan C con un aviso si no hay datos. | Acepto | Probado con red real: dominio inexistente, URL `http://` y respuesta 503. Todos terminan con un mensaje claro y sin traceback. |
 | 12 | Mostrar los reintentos. | Enviar al log de consola todos los mensajes WARNING y ERROR. | Modifico | La prueba manual mostró el error final duplicado. La consola ahora muestra solo los reintentos; el detalle completo queda en `ecotech.log`, que está fuera de Git. |
 | 13 | Auditar las 5 señales. | Revisión manual con `grep`. | Modifico | Se escribió `auditoria.py`, que analiza el AST y consulta PyPI. Se prueba con código vulnerable plantado (`pruebas/test_auditoria.py`), así que la revisión es repetible y no depende de buscar a ojo. |
+| 14 | Cumplir la guía de la evaluación formativa, que pide una API de clima o tipo de cambio. | Volver a mindicador.cl (dólar y UF). | Modifico | La prueba real falló con `SSLError` (el servidor cortó la conexión TLS). Se eligió Open-Meteo, de clima, que respondió bien y encaja con una empresa de sustentabilidad. Supabase se mantiene para la autenticación Bearer. |
+| 15 | Evitar repetir los reintentos en los dos clientes. | Copiar el ciclo de reintentos de `ClienteSupabase` en el cliente de clima. | Modifico | Se extrajo la clase base `ClienteHTTP` y ambos clientes heredan de ella (herencia y polimorfismo: cada uno redefine `_error_del_cliente`). El 401 de Supabase ahora se renueva con `try/except TokenRechazado`, como en la diapositiva "Cliente API con Bearer y Reintento 401". Las 73 pruebas anteriores pasaron sin cambios. |
+| 16 | Validar la ciudad que escribe el usuario. | `" ".join(texto.split())` y una expresión regular. | Modifico | La prueba de entradas hostiles mostró que un salto de línea se convertía en espacio y pasaba. Ahora solo se juntan espacios repetidos y cualquier carácter de control se rechaza. La validación ocurre antes de crear el cliente HTTP. |
 
 ## Auditoría de las cinco señales
 
@@ -50,3 +53,7 @@ no aparecen claves reales en ningún commit.
 - Dominio inexistente (equivale a no tener red): 4 intentos y luego el plan B o C.
 - Servidor que responde 503: 4 intentos con espera creciente y luego el plan B o C.
 - Token vencido (401), 403, 404, 429 y JSON corrupto: se simulan en `pruebas/test_cliente_supabase.py`.
+- Supabase real (18-11-2026): 5 filas, 3 válidas y 2 rechazadas a propósito.
+- Open-Meteo real (19-11-2026): clima de Temuco guardado; ciudad inexistente informada con un
+  mensaje claro; servidor inexistente con 4 intentos y luego el plan B con el último dato o
+  el plan C si la ciudad nunca se consultó.

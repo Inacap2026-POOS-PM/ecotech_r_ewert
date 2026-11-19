@@ -43,6 +43,7 @@ python main.py --demo
 - Asignar un empleado a varios proyectos y varios empleados a un proyecto.
 - Registrar horas y consultar los totales y el pago bruto del empleado.
 - Sincronizar empleados desde Supabase, con respaldo local si el servicio falla.
+- Consultar el clima actual de una ciudad de Chile con Open-Meteo, con respaldo local.
 
 El menú pide un departamento al crear un empleado. El modelo y la base siguen
 permitiendo empleados sin departamento para leer los datos de la versión de clase.
@@ -116,7 +117,8 @@ funcionando. La URL debe comenzar con `https://`.
 
 | Módulo | Responsabilidad |
 | --- | --- |
-| `servicios/cliente_supabase.py` | Inicia sesión, envía `Authorization: Bearer`, renueva el token y aplica reintentos. |
+| `servicios/cliente_http.py` | Clase base `ClienteHTTP`: timeout, trato por código de estado, reintentos y TLS. |
+| `servicios/cliente_supabase.py` | Hereda de `ClienteHTTP`. Inicia sesión, envía `Authorization: Bearer` y renueva el token ante un 401. |
 | `servicios/deserializador_empleados.py` | Convierte el JSON en `EmpleadoPlanta` o `EmpleadoContratista` validados. |
 | `servicios/sincronizador.py` | Guarda lo recibido o activa el plan B o C. |
 | `EmpleadoRepositorio.sincronizar` | Inserta o actualiza con `ON CONFLICT` parametrizado y registra `obtenido_en`. |
@@ -145,6 +147,27 @@ cambia el departamento ni las jornadas registradas localmente.
 guardados en SQLite con la fecha y la antigüedad de su `obtenido_en` (plan B).
 Si tampoco hay datos locales, se informa que el servicio no está disponible (plan C).
 En ningún caso se muestra una traza de error.
+
+## Servicio externo: clima con Open-Meteo (UA3)
+
+La guía de la evaluación pide consumir una API de clima o de tipo de cambio. La opción 12
+del menú consulta el clima actual de una ciudad de Chile en [Open-Meteo](https://open-meteo.com),
+una API pública que responde JSON y no necesita clave. Solo la pueden usar usuarios que
+iniciaron sesión, con rol `admin` o `consulta`.
+
+1. `ValidadorEntradas.ciudad` sanea el nombre escrito **antes** de cualquier petición:
+   solo letras, espacios, punto, guion y apóstrofo, entre 2 y 60 caracteres. Una entrada como
+   `Temuco; DROP TABLE clima;--` se rechaza y no llega a la API.
+2. `ClienteClima` (hereda de `ClienteHTTP`) busca la ciudad en la API de geocodificación y
+   luego pide su clima actual. La ciudad viaja en `params`; `requests` la codifica y no se
+   concatena a la URL. Usa el mismo timeout, reintentos y trato por código que Supabase.
+3. `DeserializadorClima` revisa el JSON con `.get()` y crea un `RegistroClima`, que valida
+   rangos: humedad de 0 a 100, viento no negativo, código WMO conocido y coordenadas reales.
+4. `ClimaRepositorio` guarda la última lectura de cada ciudad con un upsert parametrizado y
+   `obtenido_en`.
+5. Si Open-Meteo no responde, se muestra el último clima guardado de esa ciudad con su
+   antigüedad (plan B) o un aviso si nunca se consultó (plan C). Una ciudad que no existe se
+   informa como tal y no activa el plan B.
 
 ### Auditoría de código asistido por IA
 
@@ -189,9 +212,13 @@ cubrir timeout, falta de red, 401 con renovación, 403, 404, 429 con `Retry-Afte
 5xx con espera creciente, JSON corrupto, datos hostiles, el upsert con `obtenido_en`
 y los planes B y C. También comprueban bcrypt, la migración desde PBKDF2 y que
 `auditoria.py` detecte las cinco señales en código vulnerable de ejemplo.
+`pruebas/test_clima.py` cubre la validación de la ciudad (las entradas hostiles no llegan a
+la API), reintentos y tope del cliente de clima, datos hostiles de Open-Meteo y los planes
+B y C. En total son 87 pruebas.
 
-Para probar a mano que falla de forma controlada, desconecta la red o cambia
-`SUPABASE_URL` por una dirección inexistente y usa la opción 11.
+Para probar a mano que falla de forma controlada, desconecta la red y usa la opción 12
+(clima) o la 11 (Supabase). También puedes cambiar `SUPABASE_URL` por una dirección
+inexistente.
 
 ## Diferencias y pendientes del UML de la evaluación 1
 
