@@ -14,6 +14,10 @@ class ErrorAutenticacion(ErrorServicioExterno):
     """Credenciales rechazadas o token inválido incluso después de renovarlo (401)."""
 
 
+class TokenRechazado(ErrorAutenticacion):
+    """El servidor respondió 401: el token expiró o no es válido."""
+
+
 class ErrorPermiso(ErrorServicioExterno):
     """El usuario está identificado, pero no tiene permiso (403)."""
 
