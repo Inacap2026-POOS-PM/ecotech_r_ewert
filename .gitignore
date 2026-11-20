@@ -6,3 +6,5 @@ ecotech.db
 .vscode/
 *.db
 *.log
+.env.*
+!.env.example
