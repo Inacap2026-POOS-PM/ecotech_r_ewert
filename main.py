@@ -1,20 +1,3 @@
-"""EcoTech ES3: reemplazar solo main.py en la rama basada en la entrega E2.
-
-Conserva las carpetas originales y las dependencias de requirements.txt.
-HTTP usa urllib (biblioteca estándar); Argon2id usa cryptography ya instalada.
-No requiere requests, argon2-cffi ni una carpeta servicios. La persistencia es
-SQLite local; esta versión no migra el sistema a Supabase.
-
-Bitácora técnica de apoyo de IA, 19-11-2026:
-Prompt: adaptar únicamente main.py del proyecto original a la guía ES3.
-Acepto: consultas climáticas y monetarias con deserialización y respaldo local.
-Modifico: sustituyo imports de módulos nuevos por clases dentro de este archivo,
-para que la rama original pueda ejecutarlo sin cambiar otros archivos.
-Modifico: Argon2id con salt aleatoria; migro hashes E2 solo tras un login correcto.
-Descarto: SQL interpolado, TLS desactivado y reintentos sin límite. Uso parámetros,
-verificación TLS y cuatro intentos; no registro contraseñas ni cuerpos de errores.
-El estudiante debe revisar estas decisiones y explicar sus propias pruebas.
-"""
 
 import sys
 import os
