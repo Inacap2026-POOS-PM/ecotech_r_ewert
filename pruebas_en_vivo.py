@@ -126,9 +126,9 @@ def main():
         print(f"   Motivo: {resultado.motivo}")
     print(f"   Guardados: {len(resultado.empleados)} · Rechazados: {len(resultado.rechazados)}")
     for empleado in resultado.empleados:
-        print(f"     ✓ {empleado.rut} {empleado.nombre}")
+        print(f"     [guardado] {empleado.rut} {empleado.nombre}")
     for rechazo in resultado.rechazados:
-        print(f"     ✗ {rechazo.rut}: {rechazo.motivo}")
+        print(f"     [rechazado] {rechazo.rut}: {rechazo.motivo}")
 
     logging.shutdown()
     temporal.cleanup()
