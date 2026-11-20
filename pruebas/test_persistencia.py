@@ -1,7 +1,6 @@
 """Pruebas con una base temporal, sin modificar los datos del usuario."""
 
 import os
-import sqlite3
 import tempfile
 import unittest
 from datetime import date

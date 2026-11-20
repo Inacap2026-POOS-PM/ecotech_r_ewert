@@ -2,7 +2,7 @@
 
 Registro del uso de IA en la Unidad 3: servicios externos y seguridad.
 Herramienta: Claude Code (modelo Claude Opus 5.5) en VS Code, sobre la rama `rodolfo/ua3`.
-Fechas de las sesiones: 18-11-2026 (entradas 1 a 13) y 19-11-2026 (entradas 14 a 16).
+Fechas de las sesiones: 18-11-2026 (entradas 1 a 13), 19-11-2026 (entradas 14 a 16) y 20-11-2026 (entrada 17).
 
 Cada entrada indica la petición, lo que propuso la IA y la decisión final
 (**Acepto**, **Modifico** o **Descarto**) con su justificación técnica. Las
@@ -30,6 +30,7 @@ Las pruebas citadas se ejecutan con `python -m unittest discover -s pruebas`.
 | 14 | Cumplir la guía de la evaluación formativa, que pide una API de clima o tipo de cambio. | Primero mindicador.cl; como respondió con `SSLError` (el servidor cortó la conexión TLS), propuso Open-Meteo, de clima. | Descarto | El estudiante prefirió el tipo de cambio del dólar. Se probaron otras fuentes y se eligió `open.er-api.com` (ExchangeRate-API): pública, en JSON, con el valor del dólar en pesos. El clima se eliminó del proyecto. Supabase se mantiene para la autenticación Bearer. |
 | 15 | Evitar repetir los reintentos en los dos clientes. | Copiar el ciclo de reintentos de `ClienteSupabase` en el nuevo cliente. | Modifico | Se extrajo la clase base `ClienteHTTP` y ambos clientes heredan de ella (herencia y polimorfismo: cada uno redefine `_error_del_cliente`). El 401 de Supabase ahora se renueva con `try/except TokenRechazado`, como en la diapositiva "Cliente API con Bearer y Reintento 401". Las 73 pruebas anteriores pasaron sin cambios. |
 | 16 | Tratar las respuestas de la API de tipo de cambio. | Considerar éxito cualquier respuesta 200, como hace `ClienteHTTP`. | Modifico | Al probar la API con un código inexistente respondió **200** con `"result": "error"`. El deserializador revisa `result`, la moneda base, el tipo de cada tasa y la fecha; cualquier dato inválido se trata como `RespuestaInvalida` y activa el plan B. |
+| 17 | Revisar la configuración de Supabase, la fecha del plan B y detalles menores. | Que `desde_entorno` llame primero a `requerir()` con las 4 variables; rechazar una `SUPABASE_KEY` que empiece con `sb_secret_`; usar `MAX(obtenido_en)`; quitar un `import sqlite3` sin uso y aclarar en el README que la E3 es individual. | Acepto | Antes, sin ninguna variable solo se avisaba `SUPABASE_URL`; ahora se informan las 4 juntas. La clave secreta salta la política RLS y no debe estar en un cliente. `MIN` mostraba la fecha de un empleado antiguo como si fuera la última sincronización. Lo cubren `test_sin_variables_informa_las_cuatro_juntas`, `test_rechaza_la_clave_secreta` y `test_plan_b_usa_datos_locales_e_indica_su_antiguedad` (93 pruebas OK). |
 
 ## Auditoría de las cinco señales
 

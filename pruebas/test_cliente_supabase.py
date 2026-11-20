@@ -192,6 +192,23 @@ class PruebasClienteSupabase(unittest.TestCase):
         for nombre in ("SUPABASE_KEY", "SUPABASE_EMAIL", "SUPABASE_PASSWORD"):
             self.assertIn(nombre, str(contexto.exception))
 
+    def test_sin_variables_informa_las_cuatro_juntas(self):
+        vacio = {"SUPABASE_URL": "", "SUPABASE_KEY": "", "SUPABASE_EMAIL": "",
+                 "SUPABASE_PASSWORD": ""}
+        with patch.dict(os.environ, vacio):
+            with self.assertRaises(ErrorDeConfiguracion) as contexto:
+                ClienteSupabase.desde_entorno()
+        for nombre in vacio:
+            self.assertIn(nombre, str(contexto.exception))
+
+    def test_rechaza_la_clave_secreta(self):
+        entorno = {"SUPABASE_URL": URL, "SUPABASE_KEY": "sb_secret_abc123",
+                   "SUPABASE_EMAIL": "prueba@user.com", "SUPABASE_PASSWORD": "clave"}
+        with patch.dict(os.environ, entorno):
+            with self.assertRaises(ErrorDeConfiguracion) as contexto:
+                ClienteSupabase.desde_entorno()
+        self.assertIn("clave secreta", str(contexto.exception))
+
     def test_el_log_no_contiene_tokens_ni_contrasenias(self):
         cliente = self.crear(RespuestaFalsa(200, TOKEN), RespuestaFalsa(500),
                              RespuestaFalsa(200, []))

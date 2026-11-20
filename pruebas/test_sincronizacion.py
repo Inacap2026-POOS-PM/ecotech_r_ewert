@@ -174,16 +174,20 @@ class PruebasSincronizacion(unittest.TestCase):
 
     def test_plan_b_usa_datos_locales_e_indica_su_antiguedad(self):
         with self.assertLogs("servicios.sincronizador", "INFO"):
-            self.sincronizador(ClienteFalso([PLANTA])).sincronizar()
+            self.sincronizador(ClienteFalso([CONTRATISTA])).sincronizar()
+        ultima = self.ahora + timedelta(hours=1)
+        with self.assertLogs("servicios.sincronizador", "INFO"):
+            self.sincronizador(ClienteFalso([PLANTA]), ultima).sincronizar()
         caida = ClienteFalso(error=ServicioNoDisponible("sin red"))
         with self.assertLogs("servicios.sincronizador", "ERROR"):
             resultado = self.sincronizador(caida).sincronizar()
         self.assertEqual(resultado.origen, LOCAL)
-        self.assertEqual([e.rut for e in resultado.empleados], ["15234567-4"])
-        self.assertEqual(resultado.obtenido_en, self.ahora)
+        self.assertEqual([e.rut for e in resultado.empleados], ["15234567-4", "18765432-7"])
+        # La fecha es la última sincronización, no la del empleado más antiguo.
+        self.assertEqual(resultado.obtenido_en, ultima)
         self.assertIn("sin red", resultado.motivo)
         self.assertEqual(describir_antiguedad(resultado.obtenido_en,
-                                              self.ahora + timedelta(hours=2, minutes=5)),
+                                              ultima + timedelta(hours=2, minutes=5)),
                          "hace 2 h 5 min")
 
     def test_plan_b_tambien_cubre_configuracion_o_json_invalidos(self):

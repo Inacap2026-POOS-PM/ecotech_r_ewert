@@ -33,8 +33,11 @@ class ClienteSupabase(ClienteHTTP):
     @classmethod
     def desde_entorno(cls, **opciones):
         """Lee y valida las credenciales del .env; falla con un mensaje claro si algo falta."""
+        datos = requerir("SUPABASE_URL", "SUPABASE_KEY", "SUPABASE_EMAIL", "SUPABASE_PASSWORD")
         url = requerir_url_segura("SUPABASE_URL")
-        datos = requerir("SUPABASE_KEY", "SUPABASE_EMAIL", "SUPABASE_PASSWORD")
+        if datos["SUPABASE_KEY"].startswith("sb_secret_"):
+            raise ErrorDeConfiguracion("SUPABASE_KEY es la clave secreta. "
+                                       "Usa la clave anon o publishable.")
         if not ValidadorEntradas.validar_email(datos["SUPABASE_EMAIL"]):
             raise ErrorDeConfiguracion("SUPABASE_EMAIL no tiene formato de correo.")
         tabla = os.environ.get("SUPABASE_TABLA", "").strip() or "empleados"

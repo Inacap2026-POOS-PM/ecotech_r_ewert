@@ -215,7 +215,7 @@ y los planes B y C. También comprueban bcrypt, la migración desde PBKDF2 y que
 `auditoria.py` detecte las cinco señales en código vulnerable de ejemplo.
 `pruebas/test_tipo_cambio.py` cubre la validación del monto y de la moneda (las entradas
 hostiles no llegan a la API), reintentos, 429 y tope del cliente, el error que llega con
-código 200, datos hostiles y los planes B y C. En total son 91 pruebas.
+código 200, datos hostiles y los planes B y C. En total son 93 pruebas.
 
 ### Revisión práctica en vivo
 
@@ -223,7 +223,7 @@ código 200, datos hostiles y los planes B y C. En total son 91 pruebas.
 python pruebas_en_vivo.py
 ```
 
-Ejecuta las 91 pruebas y luego fuerza, con red real y una base temporal, cada falla: monto
+Ejecuta las 93 pruebas y luego fuerza, con red real y una base temporal, cada falla: monto
 malicioso, moneda manipulada en la ruta, URL sin https, API caída sin datos (plan C), API
 real (plan A), API caída con un valor guardado (plan B), Supabase sin credenciales y
 Supabase real con filas hostiles. Cada escenario indica el criterio de la rúbrica que
@@ -258,6 +258,8 @@ Sección informada: TI3021. Líder para esta entrega: Rodolfo Ewert.
 - Rodolfo Ewert: código base, integración de cambios y coordinación de la entrega.
 - Stefan Trostel: revisión general del código junto a Rodolfo y pruebas de funcionamiento.
 
-La entrega grupal usa como base este repositorio. No se asignan a Stefan archivos
-específicos que el equipo no haya identificado ni se inventan porcentajes de autoría.
+Las entregas anteriores fueron grupales y usaron como base este repositorio. No se asignan
+a Stefan archivos específicos que el equipo no haya identificado ni se inventan porcentajes
+de autoría. La Evaluación 3 es **individual**: los cambios de la UA3 en la rama
+`rodolfo/ua3` los presenta y defiende Rodolfo Ewert.
 El informe registra el apoyo de IA, los ajustes realizados y las pruebas ejecutadas.

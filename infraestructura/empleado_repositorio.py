@@ -188,12 +188,12 @@ class EmpleadoRepositorio:
         return empleado
 
     def listar_sincronizados(self):
-        """Plan B: devuelve los empleados externos guardados y la fecha más antigua."""
+        """Plan B: devuelve los empleados externos guardados y la última sincronización."""
         with obtener_conexion() as conn:
             filas = conn.execute(CONSULTA + " WHERE e.obtenido_en IS NOT NULL "
                                  "ORDER BY p.rut").fetchall()
             empleados = self._reconstruir(conn, filas)
-            fecha = conn.execute("SELECT MIN(obtenido_en) FROM empleado "
+            fecha = conn.execute("SELECT MAX(obtenido_en) FROM empleado "
                                  "WHERE obtenido_en IS NOT NULL").fetchone()[0]
         return empleados, datetime.fromisoformat(fecha) if fecha else None
 
