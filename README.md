@@ -217,6 +217,18 @@ y los planes B y C. También comprueban bcrypt, la migración desde PBKDF2 y que
 hostiles no llegan a la API), reintentos, 429 y tope del cliente, el error que llega con
 código 200, datos hostiles y los planes B y C. En total son 91 pruebas.
 
+### Revisión práctica en vivo
+
+```powershell
+python pruebas_en_vivo.py
+```
+
+Ejecuta las 91 pruebas y luego fuerza, con red real y una base temporal, cada falla: monto
+malicioso, moneda manipulada en la ruta, URL sin https, API caída sin datos (plan C), API
+real (plan A), API caída con un valor guardado (plan B), Supabase sin credenciales y
+Supabase real con filas hostiles. Cada escenario indica el criterio de la rúbrica que
+demuestra. No modifica `ecotech.db`.
+
 Para probar a mano que falla de forma controlada, desconecta la red y usa la opción 12
 (dólar) o la 11 (Supabase). También puedes cambiar `SUPABASE_URL` por una dirección
 inexistente.
